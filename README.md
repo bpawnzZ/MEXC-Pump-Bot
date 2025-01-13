@@ -10,12 +10,12 @@ This is a Python-based pump bot designed to monitor price changes on the MEXC cr
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/pump-bot.git
+   https://github.com/bpawnzZ/MEXC-Pump-Bot.git
    ```
 
 2. Navigate to the project directory:
    ```bash
-   cd pump-bot
+   cd MEXC-Pump-Bot
    ```
 
 3. Install dependencies:
