@@ -21,13 +21,9 @@ logging.basicConfig(
 )
 
 # MEXC API credentials
-api_key = os.getenv("API_KEY")
-api_secret = os.getenv("API_SECRET")
 
 # Initialize MEXC exchange
 mexc = ccxt.mexc({
-    'apiKey': api_key,
-    'secret': api_secret,
     'enableRateLimit': True,
 })
 
