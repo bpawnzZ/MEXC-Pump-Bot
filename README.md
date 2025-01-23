@@ -23,13 +23,7 @@ This is a Python-based pump bot designed to monitor price changes on the MEXC cr
    pip install -r requirements.txt
    ```
 
-4. Create a `.env` file and add your MEXC API credentials:
-   ```bash
-   cp .env.example .env
-   nano .env  # Edit the file with your API key and secret
-   ```
-
-5. Run the bot:
+4. Run the bot:
    ```bash
    python pumpBot.py
    ```
@@ -40,9 +34,6 @@ This is a Python-based pump bot designed to monitor price changes on the MEXC cr
 - CCXT library
 - Termcolor library
 
-## .gitignore
-
-The `.gitignore` file ensures that sensitive files like `.env` are not uploaded to GitHub.
 
 ## License
 
