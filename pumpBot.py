@@ -21,7 +21,6 @@ logging.basicConfig(
 )
 
 # MEXC API credentials
-
 # Initialize MEXC exchange
 mexc = ccxt.mexc({
     'enableRateLimit': True,
@@ -31,7 +30,6 @@ mexc = ccxt.mexc({
 show_only_pair = "USDT"  # Select nothing for all, only selected currency will be shown
 show_limit = 1           # Minimum top query limit
 min_perc = 0.05          # Minimum percentage change
-
 price_changes = []
 price_groups = {}
 
@@ -82,20 +80,23 @@ class PriceGroup:
 
     def to_string(self, isColored):
         self.isPrinted = True
-        retval = "Symbol:{}\t Time:{}\t Ticks:{}\t RPCh:{}\t TPCh:{}\t VCh:{}\t LP:{}\t LV:{}\t".format(
-            self.symbol,
-            self.last_event_time,
-            self.tick_count,
-            "{0:2.2f}".format(self.relative_price_change),
-            "{0:2.2f}".format(self.total_price_change),
-            "{0:2.2f}".format(self.total_volume_change),
-            self.last_price,
-            self.volume
-        )
+        # Remove ':USDT' from the symbol name
+        display_symbol = self.symbol.replace(':USDT', '')
+        # Format the symbol for the URL (replace '/' with '_')
+        formatted_symbol = display_symbol.replace('/', '_')
+        # Create the clickable link
+        clickable_link = f"https://futures.mexc.com/exchange/{formatted_symbol}?type=linear_swap"
+        
+        link=f"\033]8;;{clickable_link}\033\\\033[4;34m{display_symbol}\033[0m\033]8;;\033\\"
+        sym=f"Symbol: "
+        # Build the output string
+        retval = f" \t Time:{self.last_event_time}\t Ticks:{self.tick_count}\t RPCh:{self.relative_price_change:.2f}\t TPCh:{self.total_price_change:.2f}\t VCh:{self.total_volume_change:.2f}\t LP:{self.last_price}\t LV:{self.volume}"
         if not isColored:
-            return retval
+            return sym + link + retval
         else:
-            return colored(retval, self.console_color)
+            # Apply color to everything after the symbol name
+            colored_retval = f"{colored(sym, self.console_color)} {link} {colored(retval, self.console_color)}"
+            return colored_retval
 
     @property
     def console_color(self):
@@ -108,17 +109,14 @@ def process_tickers(tickers):
     for symbol, ticker in tickers.items():
         if not show_only_pair in symbol:
             continue
-
         # Check if required fields are not None
         if ticker.get('last') is None or ticker.get('open') is None or ticker.get('baseVolume') is None:
             continue  # Silently skip invalid data
-
         price = float(ticker['last'])
         total_trades = ticker['info'].get('count', 0)
         open = float(ticker['open'])
         volume = float(ticker['baseVolume'])
         event_time = datetime.fromtimestamp(ticker['timestamp'] / 1000)
-
         if len(price_changes) > 0:
             price_change = next((item for item in price_changes if item.symbol == symbol), None)
             if price_change:
@@ -134,9 +132,7 @@ def process_tickers(tickers):
                 price_changes.append(PriceChange(symbol, price, price, total_trades, open, volume, False, event_time, volume))
         else:
             price_changes.append(PriceChange(symbol, price, price, total_trades, open, volume, False, event_time, volume))
-
     price_changes.sort(key=lambda x: x.price_change_perc, reverse=True)
-
     for price_change in price_changes:
         if (not price_change.isPrinted
             and abs(price_change.price_change_perc) > min_perc
@@ -153,7 +149,6 @@ def process_tickers(tickers):
                 price_groups[price_change.symbol].total_price_change += abs(price_change.price_change_perc)
                 price_groups[price_change.symbol].relative_price_change += price_change.price_change_perc
                 price_groups[price_change.symbol].total_volume_change += price_change.volume_change_perc
-
     if len(price_groups) > 0:
         anyPrinted = False
         sorted_price_group = sorted(price_groups, key=lambda k: price_groups[k].tick_count, reverse=True)
@@ -164,7 +159,6 @@ def process_tickers(tickers):
                     logging.info(colored("Top Ticks", attrs=["bold"]))  # Make header bold
                     logging.info(max_price_group.to_string(True))
                     anyPrinted = True
-
         sorted_price_group = sorted(price_groups, key=lambda k: price_groups[k].total_price_change, reverse=True)
         for s in range(show_limit):
             if s < len(sorted_price_group):
@@ -173,7 +167,6 @@ def process_tickers(tickers):
                     logging.info(colored("Top Total Price Change", attrs=["bold"]))  # Make header bold
                     logging.info(max_price_group.to_string(True))
                     anyPrinted = True
-
         sorted_price_group = sorted(price_groups, key=lambda k: abs(price_groups[k].relative_price_change), reverse=True)
         for s in range(show_limit):
             if s < len(sorted_price_group):
@@ -182,7 +175,6 @@ def process_tickers(tickers):
                     logging.info(colored("Top Relative Price Change", attrs=["bold"]))  # Make header bold
                     logging.info(max_price_group.to_string(True))
                     anyPrinted = True
-
         sorted_price_group = sorted(price_groups, key=lambda k: price_groups[k].total_volume_change, reverse=True)
         for s in range(show_limit):
             if s < len(sorted_price_group):
@@ -191,14 +183,22 @@ def process_tickers(tickers):
                     logging.info(colored("Top Total Volume Change", attrs=["bold"]))  # Make header bold
                     logging.info(max_price_group.to_string(True))
                     anyPrinted = True
-
         if anyPrinted:
             logging.info("")
 
 def main():
     while True:
         try:
-            tickers = mexc.fetch_tickers()
+            # Fetch all markets
+            markets = mexc.load_markets()
+            
+            # Filter markets to include only swap type
+            swap_tickers = {symbol: market for symbol, market in markets.items() if market.get('type') == 'swap'}
+            
+            # Fetch tickers for the filtered symbols
+            tickers = mexc.fetch_tickers(list(swap_tickers.keys()))
+            
+            # Process only the swap tickers
             process_tickers(tickers)
         except Exception as e:
             logging.error(f"Error fetching ticker data: {e}")
